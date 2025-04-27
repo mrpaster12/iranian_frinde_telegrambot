@@ -8,8 +8,9 @@ from telegram.error import TelegramError
 from datetime import datetime
 
 # --- Configuration ---
-TOKEN = os.getenv('7944848798:AAEg51b1Dss32c6zS9A9tZXfnAtGVDFFUeE', '7944848798:AAEg51b1Dss32c6zS9A9tZXfnAtGVDFFUeE')
-ADMIN_PASSWORD = os.getenv('Iliath_1389', 'Iliath_')
+TOKEN = os.getenv('7944848798:AAFYtAuBn1MmbKZIs2xkL36h3bIMosIf6y0',
+                  '7944848798:AAFYtAuBn1MmbKZIs2xkL36h3bIMosIf6y0')
+ADMIN_PASSWORD = os.getenv('Iliath_1389', 'Iliath_1389')
 CHANNEL_ID = '@newdostchanel'
 
 # --- Language Support ---
@@ -63,6 +64,8 @@ LANGUAGES = {
 }
 
 # --- Database ---
+
+
 def init_db():
     try:
         conn = sqlite3.connect('users.db')
@@ -107,15 +110,18 @@ def init_db():
             )
         ''')
         c.execute('CREATE INDEX IF NOT EXISTS idx_user_id ON users(id);')
-        c.execute('CREATE INDEX IF NOT EXISTS idx_chats ON chats(user1_id, user2_id);')
+        c.execute(
+            'CREATE INDEX IF NOT EXISTS idx_chats ON chats(user1_id, user2_id);')
         conn.commit()
     except sqlite3.Error as e:
         print(f"Database error: {e}")
     finally:
         conn.close()
 
+
 # --- Registration states ---
 GENDER, AGE, CITY, BIO, EDIT_PROFILE, ADMIN_PASSWORD, LANGUAGE = range(7)
+
 
 async def check_channel_membership(context: ContextTypes.DEFAULT_TYPE, user_id: int) -> bool:
     try:
@@ -124,40 +130,48 @@ async def check_channel_membership(context: ContextTypes.DEFAULT_TYPE, user_id: 
     except TelegramError:
         return False
 
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     lang = get_user_language(user.id)
-    
+
     if not await check_channel_membership(context, user.id):
         try:
             await update.message.reply_text(LANGUAGES[lang]['welcome'])
         except TelegramError:
             await update.message.reply_text("❌ خطایی رخ داد. لطفاً دوباره امتحان کنید.")
         return
-    
+
     keyboard = [
-        [InlineKeyboardButton("🚹 ثبت نام" if lang == 'fa' else "🚹 Register", callback_data='register')],
-        [InlineKeyboardButton("🔎 جستجوی دوست" if lang == 'fa' else "🔎 Search Friend", callback_data='search')],
-        [InlineKeyboardButton("✏️ ویرایش پروفایل" if lang == 'fa' else "✏️ Edit Profile", callback_data='edit')],
-        [InlineKeyboardButton("🚫 پایان چت" if lang == 'fa' else "🚫 End Chat", callback_data='end')],
-        [InlineKeyboardButton("⛔ بلاک" if lang == 'fa' else "⛔ Block", callback_data='block')],
-        [InlineKeyboardButton("🌐 زبان" if lang == 'fa' else "🌐 Language", callback_data='language')]
+        [InlineKeyboardButton(
+            "🚹 ثبت نام" if lang == 'fa' else "🚹 Register", callback_data='register')],
+        [InlineKeyboardButton("🔎 جستجوی دوست" if lang ==
+                              'fa' else "🔎 Search Friend", callback_data='search')],
+        [InlineKeyboardButton("✏️ ویرایش پروفایل" if lang ==
+                              'fa' else "✏️ Edit Profile", callback_data='edit')],
+        [InlineKeyboardButton("🚫 پایان چت" if lang ==
+                              'fa' else "🚫 End Chat", callback_data='end')],
+        [InlineKeyboardButton("⛔ بلاک" if lang ==
+                              'fa' else "⛔ Block", callback_data='block')],
+        [InlineKeyboardButton(
+            "🌐 زبان" if lang == 'fa' else "🌐 Language", callback_data='language')]
     ]
     try:
         await update.message.reply_text(LANGUAGES[lang]['menu'], reply_markup=InlineKeyboardMarkup(keyboard))
     except TelegramError:
         await update.message.reply_text("❌ خطایی رخ داد. لطفاً دوباره امتحان کنید.")
 
+
 async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     user = update.effective_user
     lang = get_user_language(user.id)
-    
+
     if not await check_channel_membership(context, user.id):
         await query.edit_message_text(LANGUAGES[lang]['not_in_channel'])
         return
-    
+
     if query.data == 'register':
         keyboard = [
             [InlineKeyboardButton("🚹 پسر" if lang == 'fa' else "🚹 Male", callback_data='male'),
@@ -179,20 +193,21 @@ async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🇮🇷 فارسی", callback_data='lang_fa'),
              InlineKeyboardButton("🇬🇧 English", callback_data='lang_en')]
         ]
-        await query.edit_message_text("🌐 Select your language:" if lang == 'en' else "🌐 زبان خود را انتخاب کنید:", 
-                                    reply_markup=InlineKeyboardMarkup(keyboard))
+        await query.edit_message_text("🌐 Select your language:" if lang == 'en' else "🌐 زبان خود را انتخاب کنید:",
+                                      reply_markup=InlineKeyboardMarkup(keyboard))
         return LANGUAGE
+
 
 async def language_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     user = update.effective_user
     lang = query.data.replace('lang_', '')
-    
+
     if not await check_channel_membership(context, user.id):
         await query.edit_message_text(LANGUAGES[lang]['not_in_channel'])
         return
-    
+
     try:
         conn = sqlite3.connect('users.db')
         c = conn.cursor()
@@ -202,33 +217,35 @@ async def language_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("❌ Error updating language.")
     finally:
         conn.close()
-    
+
     await query.edit_message_text(LANGUAGES[lang]['menu'])
     await start(update, context)
     return ConversationHandler.END
+
 
 async def gender(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     user = update.effective_user
     lang = get_user_language(user.id)
-    
+
     if not await check_channel_membership(context, user.id):
         await query.edit_message_text(LANGUAGES[lang]['not_in_channel'])
         return
-    
+
     context.user_data['gender'] = query.data
     await query.edit_message_text(LANGUAGES[lang]['enter_age'])
     return AGE
 
+
 async def age(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     lang = get_user_language(user.id)
-    
+
     if not await check_channel_membership(context, user.id):
         await update.message.reply_text(LANGUAGES[lang]['not_in_channel'])
         return
-    
+
     if not update.message.text.isdigit() or int(update.message.text) < 13:
         await update.message.reply_text(LANGUAGES[lang]['invalid_age'])
         return AGE
@@ -236,37 +253,40 @@ async def age(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(LANGUAGES[lang]['enter_city'])
     return CITY
 
+
 async def city(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     lang = get_user_language(user.id)
-    
+
     if not await check_channel_membership(context, user.id):
         await update.message.reply_text(LANGUAGES[lang]['not_in_channel'])
         return
-    
+
     context.user_data['city'] = update.message.text
     await update.message.reply_text(LANGUAGES[lang]['enter_bio'])
     return BIO
 
+
 async def bio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     lang = get_user_language(user.id)
-    
+
     if not await check_channel_membership(context, user.id):
         await update.message.reply_text(LANGUAGES[lang]['not_in_channel'])
         return
-    
+
     context.user_data['bio'] = update.message.text
-    
+
     try:
         conn = sqlite3.connect('users.db')
         c = conn.cursor()
         c.execute("INSERT OR REPLACE INTO users (id, gender, age, city, bio, language) VALUES (?, ?, ?, ?, ?, ?)",
-                 (user.id, context.user_data['gender'], context.user_data['age'],
-                  context.user_data['city'], context.user_data['bio'], lang))
+                  (user.id, context.user_data['gender'], context.user_data['age'],
+                   context.user_data['city'], context.user_data['bio'], lang))
         conn.commit()
-        
-        c.execute("SELECT gender_filter, age_filter FROM queue WHERE user_id = ?", (user.id,))
+
+        c.execute(
+            "SELECT gender_filter, age_filter FROM queue WHERE user_id = ?", (user.id,))
         queue_data = c.fetchone()
         if queue_data:
             await try_match_from_queue(user.id, queue_data[0], queue_data[1], context)
@@ -275,43 +295,50 @@ async def bio(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
     finally:
         conn.close()
-    
+
     await update.message.reply_text(LANGUAGES[lang]['registration_complete'])
     return ConversationHandler.END
 
 # --- Profile Editing ---
+
+
 async def edit_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     lang = get_user_language(user.id)
-    
+
     if not await check_channel_membership(context, user.id):
         if update.callback_query:
             await update.callback_query.edit_message_text(LANGUAGES[lang]['not_in_channel'])
         else:
             await update.message.reply_text(LANGUAGES[lang]['not_in_channel'])
         return
-    
+
     keyboard = [
-        [InlineKeyboardButton("👤 جنسیت" if lang == 'fa' else "👤 Gender", callback_data='edit_gender')],
-        [InlineKeyboardButton("📅 سن" if lang == 'fa' else "📅 Age", callback_data='edit_age')],
-        [InlineKeyboardButton("🏙️ شهر" if lang == 'fa' else "🏙️ City", callback_data='edit_city')],
-        [InlineKeyboardButton("📝 بیو" if lang == 'fa' else "📝 Bio", callback_data='edit_bio')]
+        [InlineKeyboardButton(
+            "👤 جنسیت" if lang == 'fa' else "👤 Gender", callback_data='edit_gender')],
+        [InlineKeyboardButton(
+            "📅 سن" if lang == 'fa' else "📅 Age", callback_data='edit_age')],
+        [InlineKeyboardButton("🏙️ شهر" if lang ==
+                              'fa' else "🏙️ City", callback_data='edit_city')],
+        [InlineKeyboardButton(
+            "📝 بیو" if lang == 'fa' else "📝 Bio", callback_data='edit_bio')]
     ]
     if update.callback_query:
         await update.callback_query.edit_message_text(LANGUAGES[lang]['edit_profile'], reply_markup=InlineKeyboardMarkup(keyboard))
     else:
         await update.message.reply_text(LANGUAGES[lang]['edit_profile'], reply_markup=InlineKeyboardMarkup(keyboard))
 
+
 async def edit_profile_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     user = update.effective_user
     lang = get_user_language(user.id)
-    
+
     if not await check_channel_membership(context, user.id):
         await query.edit_message_text(LANGUAGES[lang]['not_in_channel'])
         return
-    
+
     if query.data == 'edit_gender':
         keyboard = [
             [InlineKeyboardButton("🚹 پسر" if lang == 'fa' else "🚹 Male", callback_data='male'),
@@ -330,41 +357,46 @@ async def edit_profile_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         return BIO
 
 # --- Search and Filters ---
+
+
 async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     lang = get_user_language(user.id)
-    
+
     if not await check_channel_membership(context, user.id):
         if update.callback_query:
             await update.callback_query.edit_message_text(LANGUAGES[lang]['not_in_channel'])
         else:
             await update.message.reply_text(LANGUAGES[lang]['not_in_channel'])
         return
-    
+
     keyboard = [
         [InlineKeyboardButton("🚹 پسر" if lang == 'fa' else "🚹 Male", callback_data='search_male'),
          InlineKeyboardButton("🚺 دختر" if lang == 'fa' else "🚺 Female", callback_data='search_female')],
-        [InlineKeyboardButton("👥 فرقی نداره" if lang == 'fa' else "👥 Any", callback_data='search_any')],
-        [InlineKeyboardButton("💬 چت ناشناس" if lang == 'fa' else "💬 Anonymous", callback_data='search_anonymous')]
+        [InlineKeyboardButton("👥 فرقی نداره" if lang ==
+                              'fa' else "👥 Any", callback_data='search_any')],
+        [InlineKeyboardButton(
+            "💬 چت ناشناس" if lang == 'fa' else "💬 Anonymous", callback_data='search_anonymous')]
     ]
     if update.callback_query:
         await update.callback_query.edit_message_text(LANGUAGES[lang]['select_search_gender'], reply_markup=InlineKeyboardMarkup(keyboard))
     else:
         await update.message.reply_text(LANGUAGES[lang]['select_search_gender'], reply_markup=InlineKeyboardMarkup(keyboard))
 
+
 async def filter_gender(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     user = update.effective_user
     lang = get_user_language(user.id)
-    
+
     if not await check_channel_membership(context, user.id):
         await query.edit_message_text(LANGUAGES[lang]['not_in_channel'])
         return
-    
+
     gender = query.data.replace('search_', '')
     context.user_data['search_gender'] = gender
-    
+
     if gender == 'anonymous':
         await start_anonymous_chat(update, context)
         return
@@ -376,16 +408,17 @@ async def filter_gender(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     await query.edit_message_text(LANGUAGES[lang]['select_search_age'], reply_markup=InlineKeyboardMarkup(keyboard))
 
+
 async def filter_age(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     user = update.effective_user
     lang = get_user_language(user.id)
-    
+
     if not await check_channel_membership(context, user.id):
         await query.edit_message_text(LANGUAGES[lang]['not_in_channel'])
         return
-    
+
     age_range = query.data
     context.user_data['search_age'] = age_range
 
@@ -398,11 +431,13 @@ async def filter_age(update: Update, context: ContextTypes.DEFAULT_TYPE):
         c = conn.cursor()
         gender_filter = context.user_data.get('search_gender')
         age_filter = context.user_data.get('search_age')
-        
-        c.execute("SELECT blocked_id FROM blocked_users WHERE blocker_id = ?", (user.id,))
+
+        c.execute(
+            "SELECT blocked_id FROM blocked_users WHERE blocker_id = ?", (user.id,))
         blocked_ids = [row[0] for row in c.fetchall()]
-        
-        sql = "SELECT id, gender, age, city, bio FROM users WHERE id != ? AND id NOT IN ({})".format(','.join('?' * len(blocked_ids)))
+
+        sql = "SELECT id, gender, age, city, bio FROM users WHERE id != ? AND id NOT IN ({})".format(
+            ','.join('?' * len(blocked_ids)))
         params = [user.id] + blocked_ids
 
         if gender_filter != 'any':
@@ -415,18 +450,19 @@ async def filter_age(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         c.execute(sql, params)
         results = c.fetchall()
-        
+
         if results:
             result = random.choice(results)
             partner_id = result[0]
             context.user_data['chat_partner'] = partner_id
-            c.execute("INSERT INTO chats (user1_id, user2_id) VALUES (?, ?)", (user.id, partner_id))
+            c.execute(
+                "INSERT INTO chats (user1_id, user2_id) VALUES (?, ?)", (user.id, partner_id))
             conn.commit()
             await context.bot.send_message(chat_id=partner_id, text=LANGUAGES[lang]['partner_found'])
             await query.edit_message_text(LANGUAGES[lang]['partner_found'])
         else:
             c.execute("INSERT OR REPLACE INTO queue (user_id, gender_filter, age_filter) VALUES (?, ?, ?)",
-                     (user.id, gender_filter, age_filter))
+                      (user.id, gender_filter, age_filter))
             conn.commit()
             await query.edit_message_text(LANGUAGES[lang]['no_partner'])
     except (sqlite3.Error, TelegramError):
@@ -434,11 +470,12 @@ async def filter_age(update: Update, context: ContextTypes.DEFAULT_TYPE):
     finally:
         conn.close()
 
+
 async def try_match_from_queue(user_id, gender_filter, age_filter, context):
     try:
         conn = sqlite3.connect('users.db')
         c = conn.cursor()
-        
+
         sql = "SELECT id FROM users WHERE id != ?"
         params = [user_id]
         if gender_filter != 'any':
@@ -451,11 +488,12 @@ async def try_match_from_queue(user_id, gender_filter, age_filter, context):
 
         c.execute(sql, params)
         results = c.fetchall()
-        
+
         if results:
             partner_id = random.choice(results)[0]
             c.execute("DELETE FROM queue WHERE user_id = ?", (user_id,))
-            c.execute("INSERT INTO chats (user1_id, user2_id) VALUES (?, ?)", (user_id, partner_id))
+            c.execute(
+                "INSERT INTO chats (user1_id, user2_id) VALUES (?, ?)", (user_id, partner_id))
             conn.commit()
             await context.bot.send_message(chat_id=user_id, text=LANGUAGES[get_user_language(user_id)]['partner_found'])
             await context.bot.send_message(chat_id=partner_id, text=LANGUAGES[get_user_language(partner_id)]['partner_found'])
@@ -465,16 +503,18 @@ async def try_match_from_queue(user_id, gender_filter, age_filter, context):
         conn.close()
 
 # --- Chat ---
+
+
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     lang = get_user_language(user.id)
-    
+
     if not await check_channel_membership(context, user.id):
         await update.message.reply_text(LANGUAGES[lang]['not_in_channel'])
         return
-    
+
     partner_id = context.user_data.get('chat_partner')
-    
+
     if not partner_id:
         await update.message.reply_text(LANGUAGES[lang]['no_active_chat'])
         return
@@ -482,67 +522,69 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         conn = sqlite3.connect('users.db')
         c = conn.cursor()
-        
+
         c.execute("SELECT anonymous FROM chats WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)",
-                 (user.id, partner_id, partner_id, user.id))
+                  (user.id, partner_id, partner_id, user.id))
         is_anonymous = c.fetchone()[0]
-        
+
         if is_anonymous and (update.message.photo or update.message.video or update.message.voice):
             await update.message.reply_text(LANGUAGES[lang]['anonymous_chat'])
             return
-        
+
         if update.message.text:
             await context.bot.send_message(chat_id=partner_id, text=update.message.text)
             c.execute("INSERT INTO messages (sender_id, receiver_id, content, type) VALUES (?, ?, ?, ?)",
-                     (user.id, partner_id, update.message.text, 'text'))
+                      (user.id, partner_id, update.message.text, 'text'))
         elif update.message.photo:
             for photo in update.message.photo:
                 await context.bot.send_photo(chat_id=partner_id, photo=photo.file_id)
                 c.execute("INSERT INTO messages (sender_id, receiver_id, content, type) VALUES (?, ?, ?, ?)",
-                         (user.id, partner_id, photo.file_id, 'photo'))
+                          (user.id, partner_id, photo.file_id, 'photo'))
         elif update.message.video:
             await context.bot.send_video(chat_id=partner_id, video=update.message.video.file_id)
             c.execute("INSERT INTO messages (sender_id, receiver_id, content, type) VALUES (?, ?, ?, ?)",
-                     (user.id, partner_id, update.message.video.file_id, 'video'))
+                      (user.id, partner_id, update.message.video.file_id, 'video'))
         elif update.message.voice:
             await context.bot.send_voice(chat_id=partner_id, voice=update.message.voice.file_id)
             c.execute("INSERT INTO messages (sender_id, receiver_id, content, type) VALUES (?, ?, ?, ?)",
-                     (user.id, partner_id, update.message.voice.file_id, 'voice'))
-        
+                      (user.id, partner_id, update.message.voice.file_id, 'voice'))
+
         conn.commit()
     except (sqlite3.Error, TelegramError):
         await update.message.reply_text("❌ خطایی در ارسال پیام رخ داد.")
     finally:
         conn.close()
 
+
 async def start_anonymous_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     lang = get_user_language(user.id)
-    
+
     if not await check_channel_membership(context, user.id):
         await update.callback_query.edit_message_text(LANGUAGES[lang]['not_in_channel'])
         return
-    
+
     if context.user_data.get('chat_partner'):
         await update.callback_query.edit_message_text("❗ شما در حال حاضر در چت هستید. ابتدا چت را پایان دهید.")
         return
-    
+
     try:
         conn = sqlite3.connect('users.db')
         c = conn.cursor()
         c.execute("SELECT id FROM users WHERE id != ?", (user.id,))
         results = c.fetchall()
-        
+
         if results:
             partner_id = random.choice(results)[0]
             context.user_data['chat_partner'] = partner_id
-            c.execute("INSERT INTO chats (user1_id, user2_id, anonymous) VALUES (?, ?, 1)", (user.id, partner_id))
+            c.execute(
+                "INSERT INTO chats (user1_id, user2_id, anonymous) VALUES (?, ?, 1)", (user.id, partner_id))
             conn.commit()
             await context.bot.send_message(chat_id=partner_id, text=LANGUAGES[get_user_language(partner_id)]['anonymous_chat'])
             await update.callback_query.edit_message_text(LANGUAGES[lang]['anonymous_chat'])
         else:
             c.execute("INSERT OR REPLACE INTO queue (user_id, gender_filter, age_filter) VALUES (?, ?, ?)",
-                     (user.id, 'any', 'any'))
+                      (user.id, 'any', 'any'))
             conn.commit()
             await update.callback_query.edit_message_text(LANGUAGES[lang]['no_partner'])
     except (sqlite3.Error, TelegramError):
@@ -551,30 +593,33 @@ async def start_anonymous_chat(update: Update, context: ContextTypes.DEFAULT_TYP
         conn.close()
 
 # --- End Chat ---
+
+
 async def end_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     lang = get_user_language(user.id)
-    
+
     if not await check_channel_membership(context, user.id):
         if update.callback_query:
             await update.callback_query.edit_message_text(LANGUAGES[lang]['not_in_channel'])
         else:
             await update.message.reply_text(LANGUAGES[lang]['not_in_channel'])
         return
-    
+
     partner_id = context.user_data.get('chat_partner')
-    
+
     if not partner_id:
         if update.callback_query:
             await update.callback_query.edit_message_text(LANGUAGES[lang]['no_active_chat'])
         else:
             await update.message.reply_text(LANGUAGES[lang]['no_active_chat'])
         return
-    
+
     try:
         conn = sqlite3.connect('users.db')
         c = conn.cursor()
-        c.execute("DELETE FROM chats WHERE user1_id = ? OR user2_id = ?", (user.id, user.id))
+        c.execute(
+            "DELETE FROM chats WHERE user1_id = ? OR user2_id = ?", (user.id, user.id))
         conn.commit()
         await context.bot.send_message(chat_id=partner_id, text=LANGUAGES[get_user_language(partner_id)]['chat_ended'])
         context.user_data['chat_partner'] = None
@@ -588,31 +633,35 @@ async def end_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         conn.close()
 
 # --- Block ---
+
+
 async def block(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     lang = get_user_language(user.id)
-    
+
     if not await check_channel_membership(context, user.id):
         if update.callback_query:
             await update.callback_query.edit_message_text(LANGUAGES[lang]['not_in_channel'])
         else:
             await update.message.reply_text(LANGUAGES[lang]['not_in_channel'])
         return
-    
+
     partner_id = context.user_data.get('chat_partner')
-    
+
     if not partner_id:
         if update.callback_query:
             await update.callback_query.edit_message_text(LANGUAGES[lang]['no_block_target'])
         else:
             await update.message.reply_text(LANGUAGES[lang]['no_block_target'])
         return
-    
+
     try:
         conn = sqlite3.connect('users.db')
         c = conn.cursor()
-        c.execute("INSERT INTO blocked_users (blocker_id, blocked_id) VALUES (?, ?)", (user.id, partner_id))
-        c.execute("DELETE FROM chats WHERE user1_id = ? OR user2_id = ?", (user.id, user.id))
+        c.execute(
+            "INSERT INTO blocked_users (blocker_id, blocked_id) VALUES (?, ?)", (user.id, partner_id))
+        c.execute(
+            "DELETE FROM chats WHERE user1_id = ? OR user2_id = ?", (user.id, user.id))
         conn.commit()
         await context.bot.send_message(chat_id=partner_id, text=LANGUAGES[get_user_language(partner_id)]['blocked'])
         context.user_data['chat_partner'] = None
@@ -626,52 +675,58 @@ async def block(update: Update, context: ContextTypes.DEFAULT_TYPE):
         conn.close()
 
 # --- Admin ---
+
+
 async def admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     lang = get_user_language(user.id)
-    
+
     if not await check_channel_membership(context, user.id):
         await update.message.reply_text(LANGUAGES[lang]['not_in_channel'])
         return
-    
+
     await update.message.reply_text(LANGUAGES[lang]['admin_password'])
     return ADMIN_PASSWORD
+
 
 async def check_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     lang = get_user_language(user.id)
-    
+
     if not await check_channel_membership(context, user.id):
         await update.message.reply_text(LANGUAGES[lang]['not_in_channel'])
         return
-    
+
     password = update.message.text
-    
+
     if password != ADMIN_PASSWORD:
         await update.message.reply_text(LANGUAGES[lang]['wrong_password'])
         return ConversationHandler.END
-    
+
     try:
         conn = sqlite3.connect('users.db')
         c = conn.cursor()
         c.execute("SELECT COUNT(*) FROM users")
         user_count = c.fetchone()[0]
-        c.execute("SELECT sender_id, receiver_id, content, type, timestamp FROM messages ORDER BY timestamp DESC LIMIT 50")
+        c.execute(
+            "SELECT sender_id, receiver_id, content, type, timestamp FROM messages ORDER BY timestamp DESC LIMIT 50")
         messages = c.fetchall()
-        
+
         text = f"👥 تعداد کاربران: {user_count}\n\n📝 آخرین پیام‌ها:\n" if lang == 'fa' else f"👥 Total users: {user_count}\n\n📝 Recent messages:\n"
         for msg in messages:
             text += f"\nاز {msg[0]} به {msg[1]} ({msg[3]}, {msg[4]}): {msg[2][:50]}..."
-        
+
         await update.message.reply_text(text[:4096])
     except (sqlite3.Error, TelegramError):
         await update.message.reply_text("❌ خطایی رخ داد.")
     finally:
         conn.close()
-    
+
     return ConversationHandler.END
 
 # --- Helper Functions ---
+
+
 def get_user_language(user_id):
     try:
         conn = sqlite3.connect('users.db')
@@ -685,6 +740,8 @@ def get_user_language(user_id):
         conn.close()
 
 # --- Main ---
+
+
 async def main():
     init_db()
     app = ApplicationBuilder().token(TOKEN).build()
@@ -704,12 +761,16 @@ async def main():
     )
 
     app.add_handler(conv_handler)
-    app.add_handler(CallbackQueryHandler(menu_handler, pattern='^(register|search|edit|end|block|language)$'))
+    app.add_handler(CallbackQueryHandler(
+        menu_handler, pattern='^(register|search|edit|end|block|language)$'))
     app.add_handler(CallbackQueryHandler(filter_gender, pattern='^search_'))
-    app.add_handler(CallbackQueryHandler(edit_profile_handler, pattern='^edit_'))
-    app.add_handler(CallbackQueryHandler(filter_age, pattern='^(13-20|21-30|31-40|any)$'))
+    app.add_handler(CallbackQueryHandler(
+        edit_profile_handler, pattern='^edit_'))
+    app.add_handler(CallbackQueryHandler(
+        filter_age, pattern='^(13-20|21-30|31-40|any)$'))
     app.add_handler(CommandHandler('admin', admin))
-    app.add_handler(MessageHandler(filters.TEXT | filters.PHOTO | filters.VIDEO | filters.VOICE, chat))
+    app.add_handler(MessageHandler(filters.TEXT | filters.PHOTO |
+                    filters.VIDEO | filters.VOICE, chat))
 
     await app.run_polling()
 
