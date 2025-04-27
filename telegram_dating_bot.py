@@ -8,8 +8,8 @@ from telegram.error import TelegramError
 from datetime import datetime
 
 # --- Configuration ---
-TOKEN = os.getenv('7944848798:AAEg51b1Dss32c6zS9A9tZXfnAtGVDFFUeE', ')
-ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'default_admin_password')
+TOKEN = os.getenv('7944848798:AAEg51b1Dss32c6zS9A9tZXfnAtGVDFFUeE', '7944848798:AAEg51b1Dss32c6zS9A9tZXfnAtGVDFFUeE')
+ADMIN_PASSWORD = os.getenv('Iliath_1389', 'Iliath_')
 CHANNEL_ID = '@newdostchanel'
 
 # --- Language Support ---
